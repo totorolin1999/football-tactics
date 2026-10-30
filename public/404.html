@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8">
+    <title>TactixMaster - 重定向中...</title>
+    <script>
+      // 將路徑保留並重定向到首頁，防止 GitHub Pages 刷新時 404
+      var path = window.location.pathname;
+      var repo = '/football-tactics';
+      if (path.startsWith(repo)) {
+        window.location.replace(repo + '/');
+      } else {
+        window.location.replace('/');
+      }
+    </script>
+  </head>
+  <body>
+    <p>正在前往 TactixMaster 足球戰術系統...</p>
+  </body>
+</html>
