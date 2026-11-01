@@ -1,11 +1,89 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TACTICS_DATA } from '../data/tacticsData';
 import Pitch from './Pitch';
-import { BookOpen, Award, BarChart3, ShieldAlert, Compass } from 'lucide-react';
+import { BookOpen, Award, BarChart3, ShieldAlert, Compass, Pause, Play, RotateCcw } from 'lucide-react';
+
+const SIMULATION_DURATION = 3600;
+
+function getMovementPosition(start, destinations, progress) {
+  const points = [start, ...destinations];
+  const segmentLengths = points.slice(1).map((point, index) =>
+    Math.hypot(point.x - points[index].x, point.y - points[index].y)
+  );
+  const totalLength = segmentLengths.reduce((total, length) => total + length, 0);
+  if (totalLength === 0) return start;
+
+  let distance = totalLength * progress;
+  for (let index = 0; index < segmentLengths.length; index++) {
+    const segmentLength = segmentLengths[index];
+    if (distance <= segmentLength || index === segmentLengths.length - 1) {
+      const segmentProgress = segmentLength === 0 ? 1 : distance / segmentLength;
+      return {
+        x: points[index].x + (points[index + 1].x - points[index].x) * segmentProgress,
+        y: points[index].y + (points[index + 1].y - points[index].y) * segmentProgress,
+      };
+    }
+    distance -= segmentLength;
+  }
+  return points[points.length - 1];
+}
 
 export default function TacticsView() {
   const [selectedTacticId, setSelectedTacticId] = useState('tiki-taka');
+  const [isSimulationPlaying, setIsSimulationPlaying] = useState(false);
+  const [simulationProgress, setSimulationProgress] = useState(0);
+  const simulationProgressRef = useRef(0);
+  const animationFrameRef = useRef(null);
   const tactic = TACTICS_DATA.find((t) => t.id === selectedTacticId) || TACTICS_DATA[0];
+
+  useEffect(() => {
+    if (!isSimulationPlaying) return undefined;
+    const startedAt = performance.now() - simulationProgressRef.current * SIMULATION_DURATION;
+    const animate = (timestamp) => {
+      const progress = Math.min((timestamp - startedAt) / SIMULATION_DURATION, 1);
+      simulationProgressRef.current = progress;
+      setSimulationProgress(progress);
+      if (progress >= 1) {
+        setIsSimulationPlaying(false);
+        animationFrameRef.current = null;
+        return;
+      }
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+  }, [isSimulationPlaying]);
+
+  const handleSelectTactic = (id) => {
+    setIsSimulationPlaying(false);
+    setSimulationProgress(0);
+    simulationProgressRef.current = 0;
+    setSelectedTacticId(id);
+  };
+
+  const handleToggleSimulation = () => {
+    if (isSimulationPlaying) {
+      setIsSimulationPlaying(false);
+      return;
+    }
+    if (simulationProgressRef.current >= 1) {
+      simulationProgressRef.current = 0;
+      setSimulationProgress(0);
+    }
+    setIsSimulationPlaying(true);
+  };
+
+  const handleResetSimulation = () => {
+    setIsSimulationPlaying(false);
+    simulationProgressRef.current = 0;
+    setSimulationProgress(0);
+  };
 
   // 根據不同戰術哲學定義動態球場演示數據
   const getTacticalDemo = (id) => {
@@ -30,6 +108,11 @@ export default function TacticsView() {
             { from: { x: 66, y: 62 }, to: { x: 50, y: 46 }, type: 'pass', color: '#facc15' },
             { from: { x: 50, y: 72 }, to: { x: 18, y: 84 }, type: 'run', color: '#38bdf8', label: '直塞身後' },
           ],
+          movements: [
+            { playerId: 'f9', points: [{ x: 50, y: 64 }] },
+            { playerId: 'lw', points: [{ x: 24, y: 80 }, { x: 18, y: 86 }] },
+            { playerId: 'rw', points: [{ x: 76, y: 80 }] },
+          ],
           showZones: true,
         };
 
@@ -51,6 +134,14 @@ export default function TacticsView() {
             { from: { x: 48, y: 84 }, to: { x: 45, y: 88 }, type: 'run', color: '#ef4444', label: '正面合圍' },
             { from: { x: 42, y: 68 }, to: { x: 46, y: 80 }, type: 'run', color: '#ef4444', label: '包抄接應點' },
             { from: { x: 68, y: 80 }, to: { x: 52, y: 88 }, type: 'run', color: '#ef4444', label: '封鎖回傳' },
+          ],
+          movements: [
+            { playerId: 'lw', points: [{ x: 42, y: 84 }, { x: 45, y: 85 }] },
+            { playerId: 'st', points: [{ x: 47, y: 85 }, { x: 45, y: 88 }] },
+            { playerId: 'b2b', points: [{ x: 46, y: 75 }, { x: 46, y: 80 }] },
+            { playerId: 'rw', points: [{ x: 58, y: 82 }, { x: 52, y: 88 }] },
+            { playerId: 'lcb', points: [{ x: 38, y: 52 }] },
+            { playerId: 'rcb', points: [{ x: 62, y: 52 }] },
           ],
           showZones: false,
         };
@@ -74,6 +165,11 @@ export default function TacticsView() {
             { from: { x: 60, y: 26 }, to: { x: 50, y: 55 }, type: 'pass', color: '#22c55e', label: '一腳長傳' },
             { from: { x: 50, y: 55 }, to: { x: 50, y: 92 }, type: 'run', color: '#ef4444', label: '高速反擊單刀' },
           ],
+          movements: [
+            { playerId: 'st', points: [{ x: 50, y: 72 }, { x: 50, y: 92 }] },
+            { playerId: 'lm', points: [{ x: 34, y: 34 }, { x: 20, y: 58 }] },
+            { playerId: 'rm', points: [{ x: 66, y: 34 }, { x: 80, y: 58 }] },
+          ],
           showZones: false,
         };
 
@@ -92,6 +188,13 @@ export default function TacticsView() {
             { from: { x: 30, y: 45 }, to: { x: 32, y: 68 }, type: 'run', color: '#38bdf8', label: '後衛壓上' },
             { from: { x: 55, y: 70 }, to: { x: 40, y: 50 }, type: 'run', color: '#facc15', label: '克魯伊夫回撤接應' },
             { from: { x: 45, y: 60 }, to: { x: 50, y: 88 }, type: 'run', color: '#38bdf8', label: '中場前插頂替' },
+          ],
+          movements: [
+            { playerId: 'd1', points: [{ x: 30, y: 58 }, { x: 32, y: 68 }] },
+            { playerId: 'cruyff', points: [{ x: 52, y: 62 }, { x: 40, y: 50 }] },
+            { playerId: 'm1', points: [{ x: 47, y: 70 }, { x: 50, y: 88 }] },
+            { playerId: 'w1', points: [{ x: 30, y: 76 }] },
+            { playerId: 'w2', points: [{ x: 80, y: 88 }] },
           ],
           showZones: false,
         };
@@ -115,12 +218,30 @@ export default function TacticsView() {
             { from: { x: 62, y: 52 }, to: { x: 70, y: 74 }, type: 'pass', color: '#facc15', label: '傳半空間' },
             { from: { x: 70, y: 74 }, to: { x: 50, y: 92 }, type: 'pass', color: '#ef4444', label: '倒三角/穿透' },
           ],
+          movements: [
+            { playerId: 'ifb', points: [{ x: 55, y: 50 }, { x: 50, y: 48 }] },
+            { playerId: 'gundo', points: [{ x: 34, y: 72 }, { x: 40, y: 78 }] },
+            { playerId: 'kdb', points: [{ x: 66, y: 78 }, { x: 70, y: 82 }] },
+            { playerId: 'haaland', points: [{ x: 48, y: 84 }, { x: 50, y: 92 }] },
+            { playerId: 'lw', points: [{ x: 10, y: 88 }] },
+            { playerId: 'rw', points: [{ x: 90, y: 88 }] },
+          ],
           showZones: true,
         };
     }
   };
 
   const demo = getTacticalDemo(tactic.id);
+  const simulatedPlayers = demo.players.map((player) => {
+    const movement = demo.movements.find((item) => item.playerId === player.id);
+    if (!movement) return player;
+    const position = getMovementPosition(
+      { x: player.x, y: player.y },
+      movement.points,
+      simulationProgress
+    );
+    return { ...player, ...position };
+  });
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -131,7 +252,7 @@ export default function TacticsView() {
           return (
             <button
               key={item.id}
-              onClick={() => setSelectedTacticId(item.id)}
+              onClick={() => handleSelectTactic(item.id)}
               className={`p-3.5 rounded-xl text-left border transition-all duration-300 flex flex-col justify-between ${
                 isActive
                   ? 'bg-gradient-to-br from-indigo-600 to-violet-800 text-white shadow-xl shadow-indigo-600/30 border-indigo-400 scale-102'
@@ -163,12 +284,43 @@ export default function TacticsView() {
             <span className="text-xs text-slate-400">黃虛線：傳球路徑 | 藍/紅實線：跑位/逼搶</span>
           </div>
 
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleToggleSimulation}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-sky-600 hover:bg-sky-500 text-white transition-colors"
+            >
+              {isSimulationPlaying ? (
+                <>
+                  <Pause className="w-4 h-4" />
+                  暫停跑位
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  {simulationProgress >= 1 ? '重播戰術' : simulationProgress > 0 ? '繼續跑位' : '播放戰術跑位'}
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleResetSimulation}
+              disabled={simulationProgress === 0 && !isSimulationPlaying}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              重置
+            </button>
+            <span className="text-xs text-slate-400">
+              {isSimulationPlaying ? '球員正依戰術路線跑位' : '播放預設戰術跑位'}
+            </span>
+          </div>
+
           <Pitch
-            players={demo.players}
+            players={simulatedPlayers}
             tacticalLines={demo.lines}
             showZones={demo.showZones}
             height="580px"
             interactive={false}
+            animatePositions={isSimulationPlaying || simulationProgress > 0}
           />
 
           <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 text-xs text-slate-300 leading-relaxed">

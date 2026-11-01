@@ -16,6 +16,7 @@ export default function Pitch({
   bluePlayers = [],
   height = '620px',
   interactive = true,
+  animatePositions = false,
 }) {
   return (
     <div
@@ -349,7 +350,9 @@ export default function Pitch({
             <div
               key={p.id}
               onClick={() => interactive && onSelectPlayer && onSelectPlayer(p)}
-              className={`absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-700 ease-out ${
+              className={`absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center ${
+                animatePositions ? '' : 'transition-all duration-700 ease-out'
+              } ${
                 interactive ? 'cursor-pointer hover:scale-110 z-10' : 'z-0'
               } ${isSelected ? 'scale-125 z-20' : ''}`}
               style={{ left: `${p.x}%`, top: `${p.y}%` }}

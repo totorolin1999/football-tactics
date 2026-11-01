@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FORMATIONS_DATA } from '../data/formationsData';
 import Pitch from './Pitch';
-import { Shield, Zap, RefreshCw, Trophy, AlertTriangle, CheckCircle, Info, Sparkles } from 'lucide-react';
+import { Shield, Zap, RefreshCw, Trophy, AlertTriangle, CheckCircle, Info, Sparkles, Pause, Play, RotateCcw } from 'lucide-react';
 
 export default function FormationsView() {
   const [selectedFormationId, setSelectedFormationId] = useState('4-3-3');
   const [currentPhase, setCurrentPhase] = useState('normal'); // 'defense' | 'normal' | 'attack'
   const [showZones, setShowZones] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [isPhaseSimulationPlaying, setIsPhaseSimulationPlaying] = useState(false);
 
   const formation = FORMATIONS_DATA.find((f) => f.id === selectedFormationId) || FORMATIONS_DATA[0];
   const activePlayers = formation.phases[currentPhase] || formation.phases.normal;
@@ -15,6 +16,23 @@ export default function FormationsView() {
   const handleSelectFormation = (id) => {
     setSelectedFormationId(id);
     setSelectedPlayer(null);
+    setCurrentPhase('normal');
+    setIsPhaseSimulationPlaying(false);
+  };
+
+  useEffect(() => {
+    if (!isPhaseSimulationPlaying) return undefined;
+    const phaseOrder = ['defense', 'normal', 'attack'];
+    const timeoutId = window.setTimeout(() => {
+      const currentIndex = phaseOrder.indexOf(currentPhase);
+      setCurrentPhase(phaseOrder[(currentIndex + 1) % phaseOrder.length]);
+    }, 1900);
+    return () => window.clearTimeout(timeoutId);
+  }, [currentPhase, isPhaseSimulationPlaying]);
+
+  const selectPhase = (phase) => {
+    setIsPhaseSimulationPlaying(false);
+    setCurrentPhase(phase);
   };
 
   return (
@@ -51,7 +69,7 @@ export default function FormationsView() {
             {/* 攻防階段切換 */}
             <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
               <button
-                onClick={() => setCurrentPhase('defense')}
+                onClick={() => selectPhase('defense')}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
                   currentPhase === 'defense'
                     ? 'bg-rose-600 text-white shadow'
@@ -62,7 +80,7 @@ export default function FormationsView() {
                 防守落位
               </button>
               <button
-                onClick={() => setCurrentPhase('normal')}
+                onClick={() => selectPhase('normal')}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
                   currentPhase === 'normal'
                     ? 'bg-blue-600 text-white shadow'
@@ -73,7 +91,7 @@ export default function FormationsView() {
                 常規轉換
               </button>
               <button
-                onClick={() => setCurrentPhase('attack')}
+                onClick={() => selectPhase('attack')}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
                   currentPhase === 'attack'
                     ? 'bg-amber-500 text-slate-950 shadow'
@@ -83,6 +101,38 @@ export default function FormationsView() {
                 <Zap className="w-3.5 h-3.5" />
                 全線壓上
               </button>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setIsPhaseSimulationPlaying((playing) => !playing)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-sky-600 hover:bg-sky-500 text-white transition-colors"
+                title="播放陣型在防守、轉換與進攻階段的站位變化"
+              >
+                {isPhaseSimulationPlaying ? (
+                  <>
+                    <Pause className="w-3.5 h-3.5" />
+                    暫停跑位
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3.5 h-3.5" />
+                    播放陣型跑位
+                  </>
+                )}
+              </button>
+              {isPhaseSimulationPlaying && (
+                <button
+                  onClick={() => {
+                    setIsPhaseSimulationPlaying(false);
+                    setCurrentPhase('normal');
+                  }}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
+                  title="停止模擬並重置到常規站位"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {/* 半空間 (Five-Corridor) 開關 */}
